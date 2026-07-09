@@ -144,3 +144,4 @@ vite.config.ts.timestamp-*
 
 # Agent skill-registry cache (not project code)
 .atl/
+.vercel
