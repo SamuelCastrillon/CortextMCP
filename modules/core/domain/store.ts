@@ -16,6 +16,8 @@ import {
   suggestTopicKeySchema,
   pinSchema,
   savePromptSchema,
+  updateSchema,
+  deleteSchema,
   type SaveInput,
   type SearchInput,
   type GetObservationInput,
@@ -24,12 +26,16 @@ import {
   type SuggestTopicKeyInput,
   type PinInput,
   type SavePromptInput,
+  type UpdateInput,
+  type DeleteInput,
 } from './validation';
 import {
   type StatsResult,
   type CurrentProjectResult,
   type SuggestTopicKeyResult,
   type SavePromptResult,
+  type UpdateResult,
+  type DeleteResult,
 } from './types';
 import { ensureSession } from './store-session';
 
@@ -572,4 +578,117 @@ export async function savePrompt(
   const newId = idRow.rows[0].id;
 
   return { id: newId, sync_id: syncId };
+}
+
+// ---------------------------------------------------------------------------
+// P3 — Escritura media
+// ---------------------------------------------------------------------------
+
+/**
+ * Partial update of an observation (doc §3.4).
+ * Only supplied fields change. Bumps revision_count.
+ * Recomputes normalized_hash if content changes.
+ * Strips <private> tags from new title/content.
+ */
+export async function updateObservation(
+  db: Kysely<CortexDB>,
+  actor: Actor,
+  input: UpdateInput,
+): Promise<UpdateResult> {
+  const tenantId = TENANT_ID();
+
+  // 1) Fetch existing observation
+  const obs = await getObservationById(db, tenantId, input.id);
+  if (!obs) throw new Error('Observation not found');
+  if (obs.deleted_at !== null) throw new Error('Observation not found');
+
+  // 2) Auth check
+  await assertAuthorized(db, actor, obs.project, 'write');
+
+  // 3) Strip private tags from new title/content
+  const title = input.title !== undefined ? stripPrivateTags(input.title) : undefined;
+  const content = input.content !== undefined ? stripPrivateTags(input.content) : undefined;
+
+  // 4) Recompute normalized_hash if content changed
+  const normHash = content !== undefined ? hashContent(content) : undefined;
+
+  // 5) Build dynamic SET — only supplied fields
+  const setClauses: any[] = [];
+
+  if (title !== undefined) setClauses.push(sql`title = ${title}`);
+  if (content !== undefined) setClauses.push(sql`content = ${content}`);
+  if (input.type !== undefined) setClauses.push(sql`type = ${input.type}`);
+  if (input.project !== undefined) setClauses.push(sql`project = ${normalizeProject(input.project)}`);
+  if (input.scope !== undefined) setClauses.push(sql`scope = ${input.scope}`);
+  if (input.topic_key !== undefined) setClauses.push(sql`topic_key = ${input.topic_key ?? null}`);
+  if (input.tool_name !== undefined) setClauses.push(sql`tool_name = ${input.tool_name ?? null}`);
+  if (input.session_id !== undefined) setClauses.push(sql`session_id = ${input.session_id ?? null}`);
+  if (input.sync_id !== undefined) setClauses.push(sql`sync_id = ${input.sync_id ?? null}`);
+  if (input.pinned !== undefined) setClauses.push(sql`pinned = ${input.pinned ? 1 : 0}`);
+  if (input.review_after !== undefined) setClauses.push(sql`review_after = ${input.review_after ?? null}`);
+  if (normHash !== undefined) setClauses.push(sql`normalized_hash = ${normHash}`);
+
+  // Always bump
+  setClauses.push(sql`revision_count = revision_count + 1`);
+  setClauses.push(sql`updated_at = datetime('now')`);
+
+  await sql`
+    UPDATE observations
+    SET ${sql.join(setClauses, sql`, `)}
+    WHERE tenant_id = ${tenantId} AND id = ${input.id} AND deleted_at IS NULL
+  `.execute(db);
+
+  // 6) Get updated row
+  const updated = await getObservationById(db, tenantId, input.id);
+
+  return {
+    id: Number(updated!.id),
+    sync_id: updated!.sync_id ?? '',
+    revision_count: Number(updated!.revision_count),
+  };
+}
+
+/**
+ * Soft or hard delete an observation (doc §3.5).
+ * Soft (default): SET deleted_at = datetime('now')
+ * Hard (hard_delete=true): DELETE row + orphan memory_relations
+ */
+export async function deleteObservation(
+  db: Kysely<CortexDB>,
+  actor: Actor,
+  input: DeleteInput,
+): Promise<DeleteResult> {
+  const tenantId = TENANT_ID();
+
+  // 1) Fetch observation
+  const obs = await getObservationById(db, tenantId, input.id);
+  if (!obs) throw new Error('Observation not found');
+  if (obs.deleted_at !== null) throw new Error('Observation not found');
+
+  const syncId = obs.sync_id;
+
+  // 2) Auth check
+  await assertAuthorized(db, actor, obs.project, 'write');
+
+  if (input.hard_delete) {
+    // Hard-delete with transaction
+    await db.transaction().execute(async (trx) => {
+      await sql`
+        DELETE FROM observations WHERE tenant_id = ${tenantId} AND id = ${input.id}
+      `.execute(trx);
+      await sql`
+        UPDATE memory_relations
+        SET judgment_status = 'orphaned', updated_at = datetime('now')
+        WHERE tenant_id = ${tenantId} AND (source_id = ${syncId} OR target_id = ${syncId})
+      `.execute(trx);
+    });
+  } else {
+    // Soft delete
+    await sql`
+      UPDATE observations SET deleted_at = datetime('now'), updated_at = datetime('now')
+      WHERE tenant_id = ${tenantId} AND id = ${input.id} AND deleted_at IS NULL
+    `.execute(db);
+  }
+
+  return { success: true };
 }

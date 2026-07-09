@@ -77,5 +77,49 @@ export const sessionEndSchema = z.object({
 });
 export type SessionEndInput = z.input<typeof sessionEndSchema>;
 
+// ---------------------------------------------------------------------------
+// P3 — Escritura media
+// ---------------------------------------------------------------------------
+
+export const updateSchema = z.object({
+  id: z.number().int().positive(),
+  title: z.string().optional(),
+  content: z.string().optional(),
+  type: z.string().optional(),
+  project: z.string().nullable().optional(),
+  scope: z.string().optional(),
+  topic_key: z.string().nullable().optional(),
+  tool_name: z.string().nullable().optional(),
+  session_id: z.string().nullable().optional(),
+  sync_id: z.string().nullable().optional(),
+  pinned: z.boolean().optional(),
+  review_after: z.string().nullable().optional(),
+});
+export type UpdateInput = z.input<typeof updateSchema>;
+
+export const deleteSchema = z.object({
+  id: z.number().int().positive(),
+  hard_delete: z.boolean().optional().default(false),
+});
+export type DeleteInput = z.input<typeof deleteSchema>;
+
+// ---------------------------------------------------------------------------
+// P4 — Consultas multi-query
+// ---------------------------------------------------------------------------
+
+export const timelineSchema = z.object({
+  focus_id: z.number().int().positive(),
+  before: z.number().int().min(1).max(100).optional().default(10),
+  after: z.number().int().min(1).max(100).optional().default(10),
+});
+export type TimelineInput = z.input<typeof timelineSchema>;
+
+export const contextSchema = z.object({
+  project: z.string().nullable().optional(),
+  scope: z.string().optional(),
+  max_context: z.number().int().min(1).max(100).optional().default(50),
+});
+export type ContextInput = z.input<typeof contextSchema>;
+
 export type SaveInput = z.input<typeof saveSchema>;
 export type SearchInput = z.input<typeof searchSchema>;

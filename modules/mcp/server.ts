@@ -14,6 +14,10 @@ import { registerMemSavePrompt } from './tools/mem_save_prompt';
 import { registerMemSessionStart } from './tools/mem_session_start';
 import { registerMemSessionEnd } from './tools/mem_session_end';
 import { registerMemSessionSummary } from './tools/mem_session_summary';
+import { registerMemUpdate } from './tools/mem_update';
+import { registerMemDelete } from './tools/mem_delete';
+import { registerMemTimeline } from './tools/mem_timeline';
+import { registerMemContext } from './tools/mem_context';
 
 export const handler = withMcpAuth(
   createMcpHandler(
@@ -31,6 +35,10 @@ export const handler = withMcpAuth(
       registerMemSessionStart(server);
       registerMemSessionEnd(server);
       registerMemSessionSummary(server);
+      registerMemUpdate(server);
+      registerMemDelete(server);
+      registerMemTimeline(server);
+      registerMemContext(server);
     },
     {},
     { basePath: '/api' },

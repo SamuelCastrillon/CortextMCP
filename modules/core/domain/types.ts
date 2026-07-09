@@ -95,4 +95,56 @@ export interface SearchResultRow {
   rank: number;
 }
 
+// ---------------------------------------------------------------------------
+// P3 — Escritura media result types
+// ---------------------------------------------------------------------------
+
+export interface UpdateResult {
+  id: number;
+  sync_id: string;
+  revision_count: number;
+}
+
+export interface DeleteResult {
+  success: boolean;
+}
+
+// ---------------------------------------------------------------------------
+// P4 — Consultas multi-query result types
+// ---------------------------------------------------------------------------
+
+export interface TimelineResult {
+  focus: ObservationsTable | null;
+  before: ObservationsTable[];
+  after: ObservationsTable[];
+}
+
+export interface PromptRow {
+  id: number;
+  tenant_id: string;
+  sync_id: string | null;
+  session_id: string;
+  content: string;
+  project: string | null;
+  created_at: string;
+}
+
+export interface SessionRow { // renamed alias for sessions projection
+  id: string;
+  tenant_id: string;
+  project: string;
+  directory: string;
+  started_at: string;
+  ended_at: string | null;
+  summary: string | null;
+}
+
+export interface ContextResult {
+  sessions: SessionRow[];
+  pinned: ObservationsTable[];
+  recent: ObservationsTable[];
+  prompts: PromptRow[];
+  count: number;
+}
+
 export type { ObservationsTable };
