@@ -49,4 +49,47 @@ export interface SearchResultRow {
   rank: number;
 }
 
+// ---------------------------------------------------------------------------
+// P5 — Juicio
+// ---------------------------------------------------------------------------
+
+export interface JudgeResult {
+  success: boolean;
+}
+
+export interface CompareResult {
+  sync_id: string;
+}
+
+// ---------------------------------------------------------------------------
+// P6 — Administrativos
+// ---------------------------------------------------------------------------
+
+export interface DoctorResult {
+  observations: number;
+  sessions: number;
+  user_prompts: number;
+  memory_relations: number;
+  conflict_candidates: number;
+  orphaned_relations: number;
+  newest_observation: string | null;
+  surface_issues: string[];
+}
+
+export interface MergeProjectsResult {
+  success: boolean;
+}
+
+export interface CapturedItem {
+  id: number;
+  sync_id: string;
+  title: string;
+}
+
+export interface CapturePassiveResult {
+  saved: number;
+  skipped: number;
+  observations: CapturedItem[];
+}
+
 export type { ObservationsTable };
