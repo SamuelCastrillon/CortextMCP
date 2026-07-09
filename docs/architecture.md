@@ -69,6 +69,55 @@ current query reference:
   (Zod = input, Kysely = rows.)
 - `project` / `scope` are resolved from the request (cloud has no `cwd`).
 
+## Module structure (target)
+
+The codebase will move from a flat `lib/` layout to a **screaming-architecture** layout
+by capability. Current state is flat `lib/` (`db`, `auth`, `store`, `validation`,
+`migrations`); the following is the agreed target.
+
+```
+app/                        # thin Next.js adapter: routes, layouts, entry points
+  layout.tsx
+  page.tsx
+  api/mcp/route.ts          # ~5 lines: imports handler from modules/mcp
+  admin/{layout,page,login} # pages call modules/panel (server)
+  .well-known/...
+modules/
+  core/                     # shared kernel — no Next, no UI, no client
+    db/                     # kysely client, migrations, db-types (+ server-only)
+    auth/                   # verifyToken, authorize, RBAC primitive
+    domain/                 # store (data access), zod schemas, types (+ server-only)
+    index.ts                # public API of core
+  mcp/                      # MCP capability
+    server.ts               # createMcpHandler wiring (real logic)
+    tools/                  # ping, mem_save, mem_search (delegate to core/domain)
+    index.ts
+  panel/                    # Admin panel capability
+    actions/                # Server Actions -> call core/domain
+    components/             # UI (client + server)
+    auth/                   # panel session/login (reuses core/auth)
+    index.ts
+```
+
+Agreed principles:
+
+- `app/` is a **thin delivery adapter**, not "just navigation" — route handlers delegate
+  to `modules/*`.
+- `core` is the **single data-access + auth-primitive layer**; both `mcp` and `panel`
+  reuse it. No second data-access layer.
+- Each capability is a **vertical slice** (logic + UI together). MCP keeps its logic
+  inside `modules/mcp`; the panel keeps its server logic inside `modules/panel/actions`
+  (Server Actions) — **not** in a separate top-level `modules/api`.
+- `core/db`, `core/auth`, `core/domain/store` carry `import 'server-only'` to prevent
+  server code leaking into client bundles.
+- Auth: `core/auth` holds the primitive (`verifyToken`, `authorize`, RBAC lookup). MCP
+  builds stateless bearer sessions per request; the panel builds Next cookie/session on
+  top — both call the same `authorize()`.
+- A separate `modules/api` was explicitly **rejected**: "queries the panel uses" would
+  duplicate `core/domain` and break vertical-slice consistency. A real HTTP/JSON API for
+  the panel is only introduced if external clients need it, and would still live inside
+  the `panel` vertical (`app/api/admin/*` -> `modules/panel/server`).
+
 ## Phasing
 
 | Slice | Delivers                                                          | Depends on            |
