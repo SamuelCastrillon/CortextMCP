@@ -1,46 +1,64 @@
-# Engram Query Reference — CortextMCP Cloud (multi-tenant)
+# Engram Query Reference — CortextMCP Cloud (single-org, project-scoped)
 
 This document is the authoritative reference for the SQL behavior of the 20 `mem_*`
 MCP tools exposed by the CortextMCP cloud server. It is derived from the upstream
 Engram `internal/store/store.go` and `internal/store/relations.go` (fork
 SamuelCastrillon/engram) so tool behavior stays 100% compatible for any MCP-HTTP
-agent. The ONLY structural change vs. upstream is **multi-tenant isolation**:
-every query is scoped by `tenant_id` (resolved from the caller's auth token, never
-from the request body).
+agent.
 
+> **Structural model (read this first).** CortextMCP is an **open-source, self-hosted**
+> tool. Each deployment serves **one organization/team/person** — there is no
+> multi-company tenancy inside a single database. Isolation between organizations is
+> achieved by **separate deployments**, not by schema. Within one instance:
+> - `tenant_id` is a **single constant org id per instance** (injected from instance
+>   config, never from a multi-company auth token). It scopes data so a bug cannot
+>   cross instance boundaries.
+> - The real access boundary is **per-project authorization**: memories belong to
+>   **projects**, and a `user_project_access` grant decides which users may
+>   read/write a given project. See §1 and §3 (Authorization guard).
+>
 > **Storage backend:** Turso / libSQL (SQLite-compatible). FTS5 is supported by
 > Turso, so the `observations_fts` virtual table and `bm25()` ranking work
 > unchanged. Every statement below is valid libSQL.
 
 ---
 
-## 1. Multi-tenant model
+## 1. Deployment & tenancy model
 
 Upstream Engram is single-user with a local SQLite file. CortextMCP is a shared
-cloud server, so all data is partitioned by `tenant_id`. The tenant is **never**
-supplied by the tool arguments — it is injected from the authenticated MCP session.
+server for a **team**, so data is organized differently:
 
-| Upstream table        | CortextMCP change                                   |
-| --------------------- | --------------------------------------------------- |
-| `sessions`            | + `tenant_id TEXT NOT NULL` (leading column of PK)  |
-| `observations`        | + `tenant_id TEXT NOT NULL` (leading column of PK)  |
-| `user_prompts`        | + `tenant_id TEXT NOT NULL`                         |
-| `memory_relations`    | + `tenant_id TEXT NOT NULL`                         |
-| `sync_mutations`      | **DROPPED** — no local→cloud replication in cloud   |
-| `sync_chunks`         | **DROPPED** — same reason                           |
+- **One instance = one org.** The `tenant_id` column is a constant org identifier for
+  the whole deployment (set from env/config). It is NOT a per-company partition key.
+- **Projects, not users, own memories.** `observations.project` groups memories.
+  Multiple users can read/write the same project.
+- **Users & roles.** `users` holds accounts with role `admin` or `member`. A bearer
+  token resolves to a `user_id`.
+- **Per-project authorization.** `user_project_access` grants a user a permission
+  (`read` / `write` / `admin`) on a project. `admin` role implies all projects.
+
+| Upstream table             | CortextMCP change                                       |
+| -------------------------- | ------------------------------------------------------- |
+| `sessions`                 | + `tenant_id TEXT NOT NULL` (constant per instance)     |
+| `observations`             | + `tenant_id TEXT NOT NULL` (constant per instance)     |
+| `user_prompts`             | + `tenant_id TEXT NOT NULL` (constant per instance)     |
+| `memory_relations`         | + `tenant_id TEXT NOT NULL` (constant per instance)     |
+| `users` (NEW)              | accounts + role (`admin`/`member`)                      |
+| `projects` (NEW)           | project registry (name, created_by)                     |
+| `user_project_access` (NEW)| user ↔ project ↔ permission (`read`/`write`/`admin`)   |
+| `sync_mutations`           | **DROPPED** — no local→cloud replication in cloud       |
+| `sync_chunks`              | **DROPPED** — same reason                               |
 
 Notes:
-- `observations.id` remains `INTEGER AUTOINCREMENT` **per tenant** (reset per
-  partition is not required; Turram autoincrement is global but `tenant_id` +
-  `id` is the natural key). Agents receive `id` as before; cross-tenant clashes
-  are impossible because every read/write is tenant-scoped.
+- `observations.id` remains `INTEGER AUTOINCREMENT`. `tenant_id` is constant, so it is
+  effectively a partition of one. Agents receive `id` as before.
 - `sync_id` (`obs-<hex>`, `prompt-<hex>`, `rel-<hex>`) is preserved as the stable
   external identity. It is used for idempotent upserts and for the conflict
   surfacing layer.
-- Migration from a local Engram instance is **not** a bulk import. Users keep
-  Engram configured alongside CortextMCP and ask their agent to copy selected
-  memories via `mem_save` (same `topic_key`/`type`). The cloud server needs no
-  special import endpoint.
+- Migration from a local Engram instance is **not** a bulk import. Users keep Engram
+  configured alongside CortextMCP and ask their agent to copy selected memories via
+  `mem_save` (same `topic_key`/`type`). The cloud server needs no special import
+  endpoint.
 
 ---
 
@@ -128,7 +146,42 @@ CREATE TABLE IF NOT EXISTS memory_relations (
   marked_by_model  TEXT,
   session_id       TEXT,
   created_at       TEXT NOT NULL DEFAULT (datetime('now')),
-  updated_at       TEXT NOT NULL DEFAULT (datetime('now'))
+  updated_at     TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+-- Accounts. One instance = one org; roles: admin | member.
+CREATE TABLE IF NOT EXISTS users (
+  id              INTEGER PRIMARY KEY AUTOINCREMENT,
+  tenant_id       TEXT NOT NULL,
+  username        TEXT NOT NULL,
+  role            TEXT NOT NULL DEFAULT 'member',   -- admin | member
+  credential_hash TEXT NOT NULL,
+  created_by      INTEGER,                           -- user_id who created this account
+  created_at      TEXT NOT NULL DEFAULT (datetime('now')),
+  UNIQUE (tenant_id, username)
+);
+
+-- Project registry (admin-facing listing / grant target).
+CREATE TABLE IF NOT EXISTS projects (
+  id         INTEGER PRIMARY KEY AUTOINCREMENT,
+  tenant_id  TEXT NOT NULL,
+  name       TEXT NOT NULL,
+  created_by INTEGER,
+  created_at TEXT NOT NULL DEFAULT (datetime('now')),
+  UNIQUE (tenant_id, name)
+);
+
+-- Per-project authorization. `project` matches observations.project (text).
+CREATE TABLE IF NOT EXISTS user_project_access (
+  id         INTEGER PRIMARY KEY AUTOINCREMENT,
+  tenant_id  TEXT NOT NULL,
+  user_id    INTEGER NOT NULL,
+  project    TEXT NOT NULL,
+  permission TEXT NOT NULL,   -- read | write | admin
+  granted_by INTEGER,
+  created_at TEXT NOT NULL DEFAULT (datetime('now')),
+  UNIQUE (tenant_id, user_id, project),
+  FOREIGN KEY (tenant_id, user_id) REFERENCES users(tenant_id, id)
 );
 ```
 
@@ -161,8 +214,32 @@ END;
 
 ## 3. Tool → query mapping
 
-All snippets assume a bound parameter `:tenant_id` injected from auth. The
-`nullableString()` helper maps Go `""` → SQL `NULL`.
+All snippets assume a bound parameter `:tenant_id` = the **constant instance org id**
+(injected from config, not from a user token). The `nullableString()` helper maps Go
+`""` → SQL `NULL`.
+
+### Authorization guard (applies to every tool)
+
+Before any read/write, the server resolves the caller from the bearer token to a
+`user_id` + `role`. Then:
+
+- `admin` role → access to **all** projects (no `user_project_access` row required).
+- `member` role → the target `project` must have a `user_project_access` row for the
+  `user_id` with the required level: `read` for `search`/`get`/`context`/`timeline`/
+  `stats`; `write` (or `admin`) for `save`/`update`/`delete`/`judge`.
+- A defensive SQL check can be added, e.g. for a read on project `:project`:
+  ```sql
+  AND EXISTS (
+    SELECT 1 FROM user_project_access upa
+    WHERE upa.tenant_id = :tenant_id AND upa.user_id = :user_id
+      AND upa.project = :project AND upa.permission IN ('read','write','admin')
+  )
+  ```
+  The app guard is the authoritative check; the SQL `EXISTS` is defense-in-depth.
+
+The per-project filter below is shown as `AND o.project = :project` /
+`LOWER(project) = :project`; the guard guarantees the caller is authorized for that
+project before the statement runs.
 
 ### 3.1 `mem_save` → `AddObservation`
 
@@ -537,7 +614,8 @@ WHERE tenant_id = :tenant_id AND id = :id AND deleted_at IS NULL;
 | Upstream behavior            | CortextMCP | Notes                                  |
 | ---------------------------- | ---------- | -------------------------------------- |
 | 20 `mem_*` tools             | ✅         | identical names + signatures           |
-| Upsert by `topic_key`        | ✅         | + `tenant_id` scoping                  |
+| Upsert by `topic_key`        | ✅         | + constant `tenant_id` (single org) scoping        |
+| Per-project authorization    | ✅         | `user_project_access` (read/write/admin)          |
 | Dedupe 15-min window         | ✅         | same `normalized_hash` logic           |
 | FTS5 `bm25()` ranking        | ✅         | Turso supports FTS5                    |
 | Conflict surfacing on save   | ✅         | `memory_relations` + `judgment_id`     |

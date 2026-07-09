@@ -41,8 +41,12 @@ a full ORM (Prisma, Drizzle ORM, etc.).
   fragments where the builder is insufficient. Compatibility beats builder purity.
 - Every `mem_*` tool validates its **input** with Zod at the MCP boundary.
   Kysley types the **rows**. Zod (input) + Kysely (rows) is the typing strategy.
-- Never bypass `tenant_id` scoping. Every query builds from a tenant-scoped
-  base (`db.selectFrom('observations').where('tenant_id', '=', tenantId)`).
+- `tenant_id` is a **constant per instance** (set from config). Never accept it
+  from a user token. Every query builds from a tenant-scoped base
+  (`db.selectFrom('observations').where('tenant_id', '=', instanceOrgId)`).
+- Never bypass the **per-project permission guard**. Every memory operation
+  resolves the caller's `user_id` + `role` and verifies a `user_project_access`
+  grant (or `admin` role) for the target project before executing.
 
 ---
 
@@ -72,12 +76,14 @@ Reproduce upstream Engram cases and assert the result matches. Must cover:
 - `mem_update` partial → only supplied fields change, `revision_count++`.
 - Soft delete → row excluded from `mem_search` / `mem_context` / `mem_timeline`.
 
-#### L2 — Multi-tenant isolation tests (security-critical)
-- Tenant A cannot read/write tenant B's memories (wrong `tenant_id` in token →
-  empty/404).
-- `sync_id` collisions across tenants do not merge or error.
-- `mem_search` with tenant A's token never returns tenant B rows.
-- `mem_project` resolution per tenant, not cwd.
+#### L2 — Project authorization tests (security-critical)
+- Member without a grant on project X gets empty/403 from `mem_search` / `mem_get` /
+  `mem_context` on X.
+- Member with `read` only on X is rejected on `mem_save` / `mem_update` / `mem_delete`
+  (needs `write`/`admin`).
+- `admin` role sees and writes all projects with no `user_project_access` row.
+- `sync_id` collisions across projects do not merge or error.
+- `mem_search` for a user never returns rows from a project they are not granted.
 
 #### L3 — MCP integration tests (real boundary)
 - Use the MCP SDK to send a real `tools/call` to the `/api/mcp` handler in a
@@ -112,8 +118,9 @@ parity test passes.
 - Versioned, sequential migration files (e.g. `migrations/0001_init.sql`).
 - Applied by a small runner at startup (dev) and in a CI step; idempotent
   (`IF NOT EXISTS`, guard by a `_migrations` table).
-- DDL includes: `tenant_id` columns, FTS5 virtual tables, the three FTS5 sync
-  triggers, `memory_relations`. Mirrors `docs/engram-query-reference.md` §2.
+- DDL includes: constant `tenant_id` columns, FTS5 virtual tables, the three FTS5
+  sync triggers, `memory_relations`, plus `users`, `projects`, and
+  `user_project_access`. Mirrors `docs/engram-query-reference.md` §2.
 - `sync_mutations` / `sync_chunks` are intentionally absent (cloud is source of truth).
 
 ---
@@ -129,4 +136,5 @@ parity test passes.
 | Test runner      | Vitest                                    |
 | Test DB          | libSQL in-memory / ephemeral, no remote   |
 | First work       | Schema + parity tests (red) before tools  |
+| Authorization    | Per-project guard via `user_project_access` (admin = all) |
 | Compatibility    | Defined by L1 parity tests, not by feel   |
