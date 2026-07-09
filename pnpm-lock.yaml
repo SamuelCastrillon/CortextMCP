@@ -14,6 +14,9 @@ importers:
       '@modelcontextprotocol/sdk':
         specifier: latest
         version: 1.29.0(zod@3.25.76)
+      '@next/env':
+        specifier: ^15.0.0
+        version: 15.5.20
       kysely:
         specifier: ^0.28.0
         version: 0.28.17

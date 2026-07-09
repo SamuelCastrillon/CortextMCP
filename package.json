@@ -15,6 +15,7 @@
   },
   "dependencies": {
     "@libsql/client": "^0.15.0",
+    "@next/env": "^15.0.0",
     "@modelcontextprotocol/sdk": "latest",
     "kysely": "^0.28.0",
     "kysely-libsql": "^0.7.1",
