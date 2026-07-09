@@ -28,12 +28,13 @@ const OBS_COLS_REVIEW = `id, tenant_id, sync_id, session_id, type, title, conten
  * - manual / other → null
  */
 function computeNextReview(type: string): string | null {
+  const now = Date.now();
   switch (type) {
     case 'bugfix':
-      return sql<string>`datetime('now', '+7 days')`.compile().sql;
+      return new Date(now + 7 * 24 * 60 * 60 * 1000).toISOString().replace('T', ' ').replace('Z', '');
     case 'architecture':
     case 'decision':
-      return sql<string>`datetime('now', '+30 days')`.compile().sql;
+      return new Date(now + 30 * 24 * 60 * 60 * 1000).toISOString().replace('T', ' ').replace('Z', '');
     default:
       return null;
   }
