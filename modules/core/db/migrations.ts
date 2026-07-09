@@ -4,13 +4,13 @@ import { join } from 'node:path';
 import type { Client } from '@libsql/client';
 
 /**
- * Versioned migrations. The canonical source of truth is `migrations/0001_init.sql`
+ * Versioned migrations. The canonical source of truth is `modules/core/db/migrations/0001_init.sql`
  * (reviewed by humans / the orchestrator). This runtime copy is embedded so the runner
  * works identically in dev, vitest, and Vercel (where reading arbitrary files from the
  * deployed bundle is not guaranteed). The two MUST stay in sync.
  *
- * If the on-disk `migrations/` directory is present (dev / vitest), the runner prefers
- * it; otherwise it falls back to this embedded array.
+ * If the on-disk `modules/core/db/migrations/` directory is present (dev / vitest), the
+ * runner prefers it; otherwise it falls back to this embedded array.
  */
 export interface Migration {
   version: string;
@@ -25,14 +25,32 @@ function safeRead(p: string): string {
   }
 }
 
-// Runtime fallback copy of migrations/0001_init.sql (see header note). In dev and
+// Runtime fallback copy of modules/core/db/migrations/0001_init.sql (see header note). In dev and
 // vitest the on-disk migrations/ directory is preferred; this only loads if that
 // directory is unavailable (e.g. some bundled deployments).
 const EMBEDDED_MIGRATIONS: Migration[] = [
-  { version: '0001_init', sql: safeRead(join(process.cwd(), 'migrations', '0001_init.sql')) },
+  { version: '0001_init', sql: safeRead(join(process.cwd(), 'modules', 'core', 'db', 'migrations', '0001_init.sql')) },
 ].filter((m) => m.sql.length > 0);
 
 function loadMigrations(): Migration[] {
+  // Prefer modules/core/db/migrations/ first, fall back to root migrations/
+  const coreDir = join(process.cwd(), 'modules', 'core', 'db', 'migrations');
+  if (existsSync(coreDir)) {
+    try {
+      const files = readdirSync(coreDir)
+        .filter((f) => f.endsWith('.sql'))
+        .sort();
+      if (files.length > 0) {
+        return files.map((f) => ({
+          version: f.replace(/\.sql$/, ''),
+          sql: readFileSync(join(coreDir, f), 'utf-8'),
+        }));
+      }
+    } catch {
+      // fall through to root
+    }
+  }
+
   const dir = join(process.cwd(), 'migrations');
   if (existsSync(dir)) {
     try {
