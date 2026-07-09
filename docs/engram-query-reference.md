@@ -181,7 +181,7 @@ CREATE TABLE IF NOT EXISTS user_project_access (
   granted_by INTEGER,
   created_at TEXT NOT NULL DEFAULT (datetime('now')),
   UNIQUE (tenant_id, user_id, project),
-  FOREIGN KEY (tenant_id, user_id) REFERENCES users(tenant_id, id)
+  FOREIGN KEY (user_id) REFERENCES users(id)
 );
 ```
 
