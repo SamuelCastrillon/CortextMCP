@@ -136,20 +136,9 @@ describe('verifyToken — dev bypass', () => {
   });
 });
 
-describe('bootstrapAdminFromEnv', () => {
-  beforeEach(() => {
-    process.env = { ...OLD_ENV };
-  });
-
-  afterEach(() => {
-    process.env = { ...OLD_ENV };
-  });
-
-  it('bootstrap creates admin when ADMIN_USERNAME/PASSWORD are set', async () => {
-    process.env.ADMIN_USERNAME = 'env-admin';
-    process.env.ADMIN_PASSWORD = 'env-admin-pass';
-
-    const { bootstrapAdminFromEnv } = await import('../index');
+describe('seedAdmin — idempotent bootstrap', () => {
+  it('creates admin from explicit credentials', async () => {
+    const { seedAdmin } = await import('@/modules/core/db/seed');
     const { createClient } = await import('@libsql/client');
     const { runMigrations } = await import('@/modules/core/db/migrations');
     const { join } = await import('node:path');
@@ -160,13 +149,42 @@ describe('bootstrapAdminFromEnv', () => {
     const testClient = createClient({ url });
     await runMigrations(testClient);
 
-    await bootstrapAdminFromEnv(testClient);
+    await seedAdmin(testClient, { username: 'bootstrap-admin', password: 'bootstrap-pass' });
 
     const users = await testClient.execute({
       sql: `SELECT username, role, is_active FROM users WHERE role = 'admin'`,
     });
     expect(users.rows.length).toBe(1);
-    expect((users.rows[0] as Record<string, unknown>).username).toBe('env-admin');
+    expect((users.rows[0] as Record<string, unknown>).username).toBe('bootstrap-admin');
     expect((users.rows[0] as Record<string, unknown>).is_active).toBe(1);
+  });
+
+  it('upserts: credential_hash updates on re-run with same username', async () => {
+    const { seedAdmin } = await import('@/modules/core/db/seed');
+    const { createClient } = await import('@libsql/client');
+    const { runMigrations } = await import('@/modules/core/db/migrations');
+    const { join } = await import('node:path');
+    const { tmpdir } = await import('node:os');
+    const { randomUUID } = await import('node:crypto');
+
+    const url = `file:${join(tmpdir(), `cortext-test-upsert-${randomUUID()}.turso`)}`;
+    const testClient = createClient({ url });
+    await runMigrations(testClient);
+
+    await seedAdmin(testClient, { username: 'same-admin', password: 'first-password' });
+    const firstHash = (
+      await testClient.execute({
+        sql: `SELECT credential_hash FROM users WHERE username = 'same-admin'`,
+      })
+    ).rows[0] as Record<string, unknown>;
+
+    await seedAdmin(testClient, { username: 'same-admin', password: 'changed-password' });
+    const secondHash = (
+      await testClient.execute({
+        sql: `SELECT credential_hash FROM users WHERE username = 'same-admin'`,
+      })
+    ).rows[0] as Record<string, unknown>;
+
+    expect(firstHash.credential_hash).not.toBe(secondHash.credential_hash);
   });
 });

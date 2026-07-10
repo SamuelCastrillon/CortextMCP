@@ -41,11 +41,12 @@ describe('migration — schema smoke', () => {
     expect(res.rows.length).toBe(2);
   });
 
-  it('seeds the dev-admin account', async () => {
+  it('seeds an admin account via idempotent bootstrap', async () => {
     const res = await client.execute({
-      sql: `SELECT username, role FROM users WHERE username = 'dev-admin'`,
+      sql: `SELECT username, role FROM users WHERE role = 'admin'`,
     });
     expect(res.rows.length).toBe(1);
+    expect((res.rows[0] as unknown as { username: string }).username).toBe('test-admin');
     expect((res.rows[0] as unknown as { role: string }).role).toBe('admin');
   });
 

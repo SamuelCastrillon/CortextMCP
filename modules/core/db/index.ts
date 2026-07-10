@@ -63,7 +63,11 @@ export async function createTestDb(): Promise<{
   const url = `file:${join(tmpdir(), `cortext-test-${randomUUID()}.turso`)}`;
   const client = createClient({ url });
   await runMigrations(client);
-  const admin = await seedAdmin(client);
+  // Pass explicit test credentials so seedAdmin is never env-var dependent
+  const admin = await seedAdmin(client, {
+    username: 'test-admin',
+    password: 'test-password-for-tests',
+  }) as UserRow;
   const db = new Kysely<CortexDB>({ dialect: new LibsqlDialect({ client }) });
   return { db, client, admin };
 }

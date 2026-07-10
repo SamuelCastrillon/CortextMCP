@@ -2,12 +2,10 @@ import 'server-only';
 import type { AuthInfo } from '@modelcontextprotocol/sdk/server/auth/types.js';
 import type { Kysely } from 'kysely';
 import { sql } from 'kysely';
-import type { Client } from '@libsql/client';
 import type { CortexDB } from '../db/db-types';
-import { getDb, TENANT_ID, resolveUrl } from '../db';
+import { getDb, TENANT_ID } from '../db';
 import { normalizeProject } from '../domain/normalize';
 import { hashToken } from './tokens';
-import { hashPassword } from './password';
 
 export interface Actor {
   userId: number;
@@ -16,46 +14,6 @@ export interface Actor {
 }
 
 export type RequiredLevel = 'read' | 'write';
-
-/**
- * Bootstrap the first admin from ADMIN_USERNAME/ADMIN_PASSWORD env vars.
- * Only runs when the users table is empty for the current tenant.
- * This is a safety net — the primary bootstrap happens in seed.ts via getDb().
- * Accepts an optional libSQL client for test isolation.
- */
-export async function bootstrapAdminFromEnv(
-  externalClient?: Client,
-): Promise<void> {
-  const { createClient } = await import('@libsql/client');
-  const client = externalClient ?? createClient(resolveUrl());
-  const tenantId = TENANT_ID();
-
-  try {
-    const existing = await client.execute({
-      sql: `SELECT COUNT(*) AS cnt FROM users WHERE tenant_id = ?`,
-      args: [tenantId],
-    });
-    const count = Number((existing.rows[0] as Record<string, unknown>).cnt ?? 0);
-
-    if (count === 0) {
-      const adminUsername = process.env.ADMIN_USERNAME;
-      const adminPassword = process.env.ADMIN_PASSWORD;
-
-      if (adminUsername && adminPassword) {
-        const hash = await hashPassword(adminPassword);
-        await client.execute({
-          sql: `INSERT INTO users (tenant_id, username, role, credential_hash, is_active, created_at)
-                VALUES (?, ?, 'admin', ?, 1, datetime('now'))`,
-          args: [tenantId, adminUsername, hash],
-        });
-      }
-    }
-  } finally {
-    if (!externalClient && 'close' in client) {
-      client.close();
-    }
-  }
-}
 
 /**
  * Verify a bearer token.
