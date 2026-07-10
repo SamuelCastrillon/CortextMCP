@@ -16,9 +16,9 @@ describe('migration — schema smoke', () => {
             WHERE type IN ('table','view')
               AND name IN ('sessions','observations','observations_fts','user_prompts',
                            'prompts_fts','memory_relations','users','projects',
-                           'user_project_access','_migrations')`,
+                           'user_project_access','user_tokens','instance_settings','_migrations')`,
     });
-    expect(res.rows.length).toBe(10);
+    expect(res.rows.length).toBe(12);
   });
 
   it('creates the 3 FTS5 sync triggers', async () => {
@@ -37,7 +37,8 @@ describe('migration — schema smoke', () => {
     const { runMigrations } = await import('@/modules/core/db/migrations');
     await runMigrations(client); // second pass
     const res = await client.execute({ sql: `SELECT version FROM _migrations` });
-    expect(res.rows.length).toBe(1);
+    // Expect 2 applied migrations (0001_init + 0002_auth)
+    expect(res.rows.length).toBe(2);
   });
 
   it('seeds the dev-admin account', async () => {

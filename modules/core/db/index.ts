@@ -17,7 +17,7 @@ export function TENANT_ID(): string {
   return process.env.CORTEXT_ORG_ID ?? 'default';
 }
 
-function resolveUrl(): { url: string; token?: string } {
+export function resolveUrl(): { url: string; token?: string } {
   const url = process.env.TURSO_DATABASE_URL;
   const token = process.env.TURSO_AUTH_TOKEN;
   if (url) return { url, token };
@@ -68,6 +68,6 @@ export async function createTestDb(): Promise<{
   return { db, client, admin };
 }
 
-export { DEV_ADMIN_USERNAME, DEV_ADMIN_CREDENTIAL_HASH, seedAdmin } from './seed';
+export { seedAdmin } from './seed';
 export * from './db-types';
 export { runMigrations, splitStatements } from './migrations';

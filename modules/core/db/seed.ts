@@ -2,32 +2,58 @@ import 'server-only';
 import { createClient, type Client } from '@libsql/client';
 import { TENANT_ID } from './index';
 import type { UserRow } from './db-types';
+import { hashPassword } from '../auth/password';
 
-// SLICE 1 DEV BYPASS (documented, not a silent no-op):
-// Real bearer -> users auth lands in Slice 3. For Slice 1 we seed one admin
-// account so the server is usable and parity tests pass. This is a constant
-// placeholder credential and MUST be replaced by real auth in Slice 3.
-export const DEV_ADMIN_USERNAME = 'dev-admin';
-export const DEV_ADMIN_CREDENTIAL_HASH = 'dev-bypass-not-for-production';
-
-/** Seed the dev-admin account if none exists for the tenant. Returns the user row. */
+/**
+ * Bootstrap the first admin user from environment variables.
+ * Called by seedAdmin() which acts as fallback when env vars are missing.
+ */
 export async function seedAdmin(client: Client): Promise<UserRow> {
   const tenantId = TENANT_ID();
-  const existing = await client.execute({
-    sql: `SELECT * FROM users WHERE tenant_id = ? AND username = ? LIMIT 1`,
-    args: [tenantId, DEV_ADMIN_USERNAME],
+
+  // Check if any users exist for this tenant
+  const existingUsers = await client.execute({
+    sql: `SELECT COUNT(*) AS cnt FROM users WHERE tenant_id = ?`,
+    args: [tenantId],
   });
-  if (existing.rows.length > 0) {
-    return existing.rows[0] as unknown as UserRow;
+  const count = Number((existingUsers.rows[0] as Record<string, unknown>).cnt ?? 0);
+
+  // If there are no users and ADMIN_USERNAME/ADMIN_PASSWORD are set, bootstrap
+  if (count === 0) {
+    const adminUsername = process.env.ADMIN_USERNAME;
+    const adminPassword = process.env.ADMIN_PASSWORD;
+
+    if (adminUsername && adminPassword) {
+      const hash = await hashPassword(adminPassword);
+      await client.execute({
+        sql: `INSERT INTO users (tenant_id, username, role, credential_hash, is_active, created_at)
+              VALUES (?, ?, 'admin', ?, 1, datetime('now'))`,
+        args: [tenantId, adminUsername, hash],
+      });
+    } else {
+      // Dev fallback: create a dev-admin with a placeholder hash
+      await client.execute({
+        sql: `INSERT INTO users (tenant_id, username, role, credential_hash, is_active, created_at)
+              VALUES (?, 'dev-admin', 'admin', 'dev-bypass-not-for-production', 1, datetime('now'))`,
+        args: [tenantId],
+      });
+    }
   }
-  await client.execute({
-    sql: `INSERT INTO users (tenant_id, username, role, credential_hash, created_at)
-          VALUES (?, ?, 'admin', ?, datetime('now'))`,
-    args: [tenantId, DEV_ADMIN_USERNAME, DEV_ADMIN_CREDENTIAL_HASH],
+
+  // Seed default instance_settings if not present
+  const regSetting = await client.execute({
+    sql: `SELECT value FROM instance_settings WHERE key = 'registration_enabled'`,
   });
-  const created = await client.execute({
-    sql: `SELECT * FROM users WHERE tenant_id = ? AND username = ? LIMIT 1`,
-    args: [tenantId, DEV_ADMIN_USERNAME],
+  if (regSetting.rows.length === 0) {
+    await client.execute({
+      sql: `INSERT INTO instance_settings (key, value, updated_at) VALUES ('registration_enabled', '0', datetime('now'))`,
+    });
+  }
+
+  // Return the first admin user (alphabetically first username for determinism)
+  const admin = await client.execute({
+    sql: `SELECT * FROM users WHERE tenant_id = ? AND role = 'admin' ORDER BY username ASC LIMIT 1`,
+    args: [tenantId],
   });
-  return created.rows[0] as unknown as UserRow;
+  return admin.rows[0] as unknown as UserRow;
 }
