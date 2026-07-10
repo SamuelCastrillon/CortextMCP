@@ -4,8 +4,22 @@ import { useActionState, useState } from 'react';
 import { registerAction } from '@/modules/panel/actions/auth';
 import { MemoryChipIcon } from './MemoryChipIcon';
 
+type RegisterState = { success: boolean; error?: never } | { success?: never; error: string } | null;
+
+async function registerActionWrapper(
+  _prevState: RegisterState,
+  formData: FormData,
+): Promise<RegisterState> {
+  try {
+    const result = await registerAction(formData);
+    return result;
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : 'Registration failed' };
+  }
+}
+
 export function RegisterForm({ enabled }: { enabled: boolean }) {
-  const [state, action, pending] = useActionState(registerAction, null);
+  const [state, formAction, pending] = useActionState(registerActionWrapper, null);
   const [confirmError, setConfirmError] = useState<string | null>(null);
 
   if (!enabled) {
@@ -36,22 +50,25 @@ export function RegisterForm({ enabled }: { enabled: boolean }) {
     );
   }
 
-  const handleSubmit = (formData: FormData) => {
-    const password = formData.get('password') as string;
-    const confirm = formData.get('confirmPassword') as string;
-    if (password !== confirm) {
-      setConfirmError('Passwords do not match');
-      return;
-    }
-    setConfirmError(null);
-    action(formData);
-  };
-
   return (
     <div className="flex flex-col items-center gap-6 w-full max-w-sm">
       <MemoryChipIcon className="w-12 h-12" />
       <div className="w-full border border-outline-variant bg-card p-6">
-        <form action={handleSubmit} className="space-y-4">
+        <form
+          action={formAction}
+          onSubmit={(e) => {
+            const formData = new FormData(e.currentTarget);
+            const password = formData.get('password') as string;
+            const confirm = formData.get('confirmPassword') as string;
+            if (password !== confirm) {
+              e.preventDefault();
+              setConfirmError('Passwords do not match');
+            } else {
+              setConfirmError(null);
+            }
+          }}
+          className="space-y-4"
+        >
           <div className="space-y-2">
             <label htmlFor="username" className="text-sm font-medium text-foreground">Username</label>
             <input id="username" name="username" type="text" required

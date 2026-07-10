@@ -4,14 +4,26 @@ import { useActionState } from 'react';
 import { loginAction } from '@/modules/panel/actions/auth';
 import { MemoryChipIcon } from './MemoryChipIcon';
 
+async function loginActionWrapper(
+  _prevState: { error: string } | null,
+  formData: FormData,
+): Promise<{ error: string } | null> {
+  try {
+    await loginAction(formData);
+    return null;
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : 'Login failed' };
+  }
+}
+
 export function LoginForm() {
-  const [state, action, pending] = useActionState(loginAction, null);
+  const [state, formAction, pending] = useActionState(loginActionWrapper, null);
 
   return (
     <div className="flex flex-col items-center gap-6 w-full max-w-sm">
       <MemoryChipIcon className="w-12 h-12" />
       <div className="w-full border border-outline-variant bg-card p-6">
-        <form action={action} className="space-y-4">
+        <form action={formAction} className="space-y-4">
           <div className="space-y-2">
             <label htmlFor="email" className="text-sm font-medium text-foreground">Email</label>
             <input
