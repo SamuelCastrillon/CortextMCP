@@ -9,14 +9,12 @@ interface Setting {
   updated_at: string;
 }
 
-export function SettingsForm() {
-  const [settings, setSettings] = useState<Setting[]>([]);
-  const [loading, setLoading] = useState(true);
+export function SettingsForm({ initialSettings = [] }: { initialSettings?: Setting[] }) {
+  const [settings, setSettings] = useState<Setting[]>(initialSettings);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState<string | null>(null);
 
   const fetchSettings = useCallback(async () => {
-    setLoading(true);
     const result = await getSettings();
     if (result.success) {
       setSettings((result.data as Setting[]) ?? []);
@@ -24,12 +22,7 @@ export function SettingsForm() {
     } else {
       setError(result.error);
     }
-    setLoading(false);
   }, []);
-
-  useEffect(() => {
-    fetchSettings();
-  }, [fetchSettings]);
 
   const handleSave = async (key: string, value: string) => {
     setSaving(key);
@@ -41,10 +34,6 @@ export function SettingsForm() {
     }
     setSaving(null);
   };
-
-  if (loading) {
-    return <p className="text-sm text-muted-foreground">Loading settings...</p>;
-  }
 
   return (
     <div className="border border-outline-variant bg-card">

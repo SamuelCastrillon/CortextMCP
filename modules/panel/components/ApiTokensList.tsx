@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback } from 'react';
 import { listTokens, createToken, revokeToken } from '@/modules/panel/actions/tokens';
 
 interface Token {
@@ -10,16 +10,14 @@ interface Token {
   created_at: string;
 }
 
-export function ApiTokensList() {
-  const [tokens, setTokens] = useState<Token[]>([]);
-  const [loading, setLoading] = useState(true);
+export function ApiTokensList({ initialTokens = [] }: { initialTokens?: Token[] }) {
+  const [tokens, setTokens] = useState<Token[]>(initialTokens);
   const [error, setError] = useState<string | null>(null);
   const [description, setDescription] = useState('');
   const [rawToken, setRawToken] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
 
   const fetchTokens = useCallback(async () => {
-    setLoading(true);
     const result = await listTokens();
     if (result.success) {
       setTokens((result.data as Token[]) ?? []);
@@ -27,12 +25,7 @@ export function ApiTokensList() {
     } else {
       setError(result.error);
     }
-    setLoading(false);
   }, []);
-
-  useEffect(() => {
-    fetchTokens();
-  }, [fetchTokens]);
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -62,10 +55,6 @@ export function ApiTokensList() {
       setError(result.error);
     }
   };
-
-  if (loading) {
-    return <p className="text-sm text-muted-foreground">Loading tokens...</p>;
-  }
 
   return (
     <div className="space-y-6">

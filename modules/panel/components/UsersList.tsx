@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback } from 'react';
 import Link from 'next/link';
 import { listUsers, toggleUserActive, updateUserRole } from '@/modules/panel/actions/users';
 
@@ -12,13 +12,11 @@ interface User {
   created_at: string;
 }
 
-export function UsersList() {
-  const [users, setUsers] = useState<User[]>([]);
-  const [loading, setLoading] = useState(true);
+export function UsersList({ initialUsers = [] }: { initialUsers?: User[] }) {
+  const [users, setUsers] = useState<User[]>(initialUsers);
   const [error, setError] = useState<string | null>(null);
 
   const fetchUsers = useCallback(async () => {
-    setLoading(true);
     const result = await listUsers();
     if (result.success) {
       setUsers((result.data as User[]) ?? []);
@@ -26,12 +24,7 @@ export function UsersList() {
     } else {
       setError(result.error);
     }
-    setLoading(false);
   }, []);
-
-  useEffect(() => {
-    fetchUsers();
-  }, [fetchUsers]);
 
   const handleToggleActive = async (userId: number) => {
     const result = await toggleUserActive(userId);
@@ -50,10 +43,6 @@ export function UsersList() {
       setError(result.error);
     }
   };
-
-  if (loading) {
-    return <p className="text-sm text-muted-foreground">Loading users...</p>;
-  }
 
   return (
     <div className="border border-outline-variant bg-card">
