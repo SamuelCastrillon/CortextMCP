@@ -1,7 +1,7 @@
 import './globals.css';
 
 export const metadata = {
-  title: 'CortextMCP',
+  title: 'Sechel',
   description: 'Serverless MCP memory server for AI coding agents',
 };
 
