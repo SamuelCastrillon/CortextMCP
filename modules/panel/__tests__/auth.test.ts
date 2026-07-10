@@ -1,4 +1,24 @@
-import { describe, it, expect, beforeAll } from 'vitest';
+import { describe, it, expect, beforeAll, beforeEach, vi } from 'vitest';
+
+// All JWT operations in panel/auth require JWT_SECRET. Set it here so tests
+// don't depend on .env files or the previous hardcoded fallback.
+beforeAll(() => {
+  process.env.JWT_SECRET = 'test-jwt-secret-for-unit-tests-only';
+});
+
+// ── Mocks for Next.js modules ────────────────────────────────────
+const mockRedirect = vi.fn();
+const mockCookieGet = vi.fn();
+
+vi.mock('next/navigation', () => ({
+  redirect: (url: string) => { mockRedirect(url); throw new Error('NEXT_REDIRECT'); },
+}));
+
+vi.mock('next/headers', () => ({
+  cookies: () => ({
+    get: mockCookieGet,
+  }),
+}));
 
 describe('panel/auth — JWT session tokens', () => {
   it('createSessionToken produces a signed JWT', async () => {
@@ -27,7 +47,7 @@ describe('panel/auth — JWT session tokens', () => {
     // Create a token that's already expired (iat in the past, short exp)
     const { SignJWT } = await import('jose');
     const secret = new TextEncoder().encode(
-      process.env.JWT_SECRET ?? 'sechel-dev-jwt-secret-change-in-production-32chr',
+      process.env.JWT_SECRET!,
     );
     const expiredToken = await new SignJWT({ userId: 1, role: 'admin' })
       .setProtectedHeader({ alg: 'HS256' })
@@ -170,5 +190,61 @@ describe('panel/actions — register gating', () => {
       : false;
 
     expect(enabled).toBe(false);
+  });
+});
+
+describe('panel/auth — requireAdmin guard', () => {
+  beforeEach(() => {
+    mockRedirect.mockClear();
+    mockCookieGet.mockReset();
+  });
+
+  it('returns userId when valid admin session exists', async () => {
+    const { createSessionToken, requireAdmin } = await import('../auth');
+    const token = await createSessionToken({ userId: 1, role: 'admin' });
+    mockCookieGet.mockReturnValue({ value: token });
+
+    const result = await requireAdmin();
+    expect(result).toEqual({ userId: 1 });
+    expect(mockRedirect).not.toHaveBeenCalled();
+  });
+
+  it('redirects when no session cookie exists', async () => {
+    mockCookieGet.mockReturnValue(undefined);
+    const { requireAdmin } = await import('../auth');
+
+    await expect(requireAdmin()).rejects.toThrow('NEXT_REDIRECT');
+    expect(mockRedirect).toHaveBeenCalledWith('/admin/login');
+  });
+
+  it('redirects when session token is invalid', async () => {
+    mockCookieGet.mockReturnValue({ value: 'invalid-token' });
+    const { requireAdmin } = await import('../auth');
+
+    await expect(requireAdmin()).rejects.toThrow('NEXT_REDIRECT');
+    expect(mockRedirect).toHaveBeenCalledWith('/admin/login');
+  });
+
+  it('redirects when session role is not admin', async () => {
+    const { createSessionToken, requireAdmin } = await import('../auth');
+    const token = await createSessionToken({ userId: 2, role: 'member' });
+    mockCookieGet.mockReturnValue({ value: token });
+
+    await expect(requireAdmin()).rejects.toThrow('NEXT_REDIRECT');
+    expect(mockRedirect).toHaveBeenCalledWith('/admin/login');
+  });
+});
+
+describe('panel/auth — ActionResult type shape', () => {
+  it('ActionResult supports success shape', () => {
+    const success: import('../auth').ActionResult = { success: true, data: { id: 1 } };
+    expect(success.success).toBe(true);
+    expect(success.data).toEqual({ id: 1 });
+  });
+
+  it('ActionResult supports error shape', () => {
+    const err: import('../auth').ActionResult = { success: false, error: 'Something went wrong' };
+    expect(err.success).toBe(false);
+    expect(err.error).toBe('Something went wrong');
   });
 });
