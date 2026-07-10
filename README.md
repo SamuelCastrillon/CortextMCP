@@ -44,20 +44,20 @@ SQL exacto por herramienta.
 
 ## Estado actual
 
-> ⚠️ **Proyecto en bootstrap.** La infraestructura MCP y la conexión a Turso
-> están cableadas, pero la lógica de negocio aún no. Lo implementado:
+> ✅ **v0.1.0 — Rebranding a Sechel completado.** Proyecto funcional con auth
+> real, panel admin y todas las herramientas MCP implementadas.
 
-| Componente            | Estado                                   |
-| --------------------- | ---------------------------------------- |
-| Handler MCP (`/api/mcp`) | ✅ vivo (hoy solo expone `ping`)      |
-| Auth (bearer/OAuth)   | 🟡 stub — `verifyToken` acepta cualquier token y devuelve `userId: 'stub'` |
-| Cliente Turso         | ✅ lazy client listo (`lib/db.ts`)       |
-| Schema de memorias    | ❌ pendiente (marcado como TODO)         |
-| 20 herramientas `mem_*` | ❌ pendiente (solo `ping` por ahora)   |
-| Admin / login         | 🟡 páginas base creadas (`/admin`)       |
+| Componente                          | Estado                                    |
+| ----------------------------------- | ----------------------------------------- |
+| Handler MCP (`/api/mcp`)            | ✅ 23 herramientas `mem_*` operativas     |
+| Auth (bearer)                       | ✅ Argon2id + JWT + SHA-256 tokens        |
+| Cliente Turso                       | ✅ Lazy client configurado (`modules/core/db/`) |
+| Schema multi-tenant                 | ✅ Tablas + triggers FTS5 + caché         |
+| Conflict surfacing                  | ❌ Pendiente (encola, no resuelve aún)    |
+| Panel admin                         | ✅ Login, registro, dashboard, sidebar    |
+| 97 tests                            | ✅ Todos pasando                          |
 
-La referencia de queries ya está documentada y es la especificación que las
-herramientas deben cumplir: `docs/engram-query-reference.md`.
+> ⚡ **Siguiente:** v0.2.0 — panel /users, /settings, /apitokens
 
 ---
 
@@ -86,8 +86,14 @@ El endpoint MCP queda en `http://localhost:3000/api/mcp`.
 | --------------------- | ------------------------------------------------- |
 | `TURSO_URL`           | URL de la base Turso (obligatoria)                |
 | `TURSO_TOKEN`         | Token de acceso de Turso                          |
-| `AUTH_ISSUER_URL`     | Issuer OAuth para metadata de recurso protegido   |
-| `MCP_REQUIRED_SCOPES` | Scopes que el token debe tener (default `read:memories`) |
+| `SECHEL_ORG_ID`       | Tenant ID para el schema multi-tenant             |
+| `SECHEL_DEV_TOKEN`    | Token de desarrollo para auth                     |
+| `JWT_SECRET`          | Secreto para firmar JWT (32+ chars)               |
+| `ADMIN_EMAIL`         | Email del admin inicial (seed)                    |
+| `ADMIN_PASSWORD`      | Password del admin inicial (seed)                 |
+
+> Las variables `CORTEXT_ORG_ID` y `CORTEXT_DEV_TOKEN` aún funcionan
+> como fallback con advertencia de deprecación.
 
 ---
 
@@ -180,24 +186,36 @@ app/
   api/mcp/route.ts              # Handler MCP over HTTP (Streamable HTTP + OAuth)
   .well-known/
     oauth-protected-resource/   # Metadata de recurso protegido (MCP auth)
-  admin/                        # UI de administración (base)
-lib/
-  auth.ts                       # verifyToken (stub por ahora)
-  db.ts                         # Cliente Turso lazy
+  admin/                        # Panel de administración (shadcn/ui)
+    login/                      # Login con Argon2id + JWT
+    register/                   # Registro de usuarios
+    page.tsx                    # Dashboard
+modules/
+  core/                         # Capa de dominio
+    db/                         # Cliente Turso, schema, migraciones, getEnv helper
+    auth/                       # verifyToken, autorización, tokens API
+  mcp/
+    server/                     # Servidor MCP (mcp-handler)
+    tools/                      # 23 herramientas mem_* implementadas
+  panel/
+    auth/                       # Lógica de auth del panel (server actions)
+    components/                 # UI: Sidebar, LoginForm, RegisterForm, etc.
 docs/
-  engram-query-reference.md     # SQL por herramienta (spec de compatibilidad)
+  engram-query-reference.md     # SQL exacto por herramienta
+  architecture.md               # Decisiones de arquitectura
 ```
 
 ---
 
 ## Roadmap
 
-- [ ] Definir schema multi-tenant en Turso (`tenant_id` en `observations`,
-      `sessions`, `user_prompts`, `memory_relations`) + triggers FTS5.
-- [ ] Implementar las 20 herramientas `mem_*` según `engram-query-reference.md`.
-- [ ] Auth real: validar bearer contra la tabla de usuarios/tokens en Turso.
-- [ ] Resolución de `project` explícita (no por cwd) + tenant por token.
-- [ ] Conflict surfacing (`mem_save` → `FindCandidates` → `memory_relations`).
+- [x] Schema multi-tenant + FTS5
+- [x] 23 herramientas `mem_*` implementadas
+- [x] Auth real: Argon2id, JWT, SHA-256 tokens API
+- [x] Panel admin: login, registro, dashboard, sidebar
+- [x] Rebranding a Sechel (v0.1.0)
+- [ ] Panel /users, /settings, /apitokens (v0.2.0)
+- [ ] Conflict surfacing (`mem_save` → `FindCandidates` → `memory_relations`)
 
 ---
 
