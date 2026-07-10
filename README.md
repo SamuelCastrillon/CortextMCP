@@ -1,11 +1,11 @@
-# CortextMCP
+# Sechel
 
 Servidor MCP en la nube para memorias persistentes de agentes de IA, 100%
 compatible con la API de herramientas `mem_*` de
 [Engram](https://github.com/Gentleman-Programming/engram).
 
 Los agentes (Claude Code, OpenCode, Cursor, Gemini CLI, etc.) que soporten
-**MCP over HTTP** pueden apuntar a CortextMCP y usar las mismas herramientas
+**MCP over HTTP** pueden apuntar a Sechel y usar las mismas herramientas
 `mem_save`, `mem_search`, `mem_context`, … sin cambios. La diferencia: la memoria
 vive en la nube (Turso / libSQL), no en un archivo SQLite local, y está aislada
 por tenant.
@@ -15,7 +15,7 @@ por tenant.
 ## Por qué existe
 
 Engram corre como binario local con SQLite de archivo y transporte **stdio**.
-Eso no se despliega en Vercel (no hay stdio en serverless). CortextMCP es el
+Eso no se despliega en Vercel (no hay stdio en serverless). Sechel es el
 mismo cerebro de memoria, pero:
 
 - **Transporte:** MCP Streamable HTTP (no stdio).
@@ -104,12 +104,12 @@ No se requiere stdin/stdio: los agentes se conectan por HTTP al endpoint
 
 ## Configuración en OpenCode
 
-CortextMCP puede configurarse de dos formas en OpenCode, según lo que necesites.
+Sechel puede configurarse de dos formas en OpenCode, según lo que necesites.
 
 ### Modo Engram-compatible (reemplazo directo)
 
 Las herramientas `mem_*` de Engram se llaman con prefijo `engram_` (ej.
-`engram_mem_save`). Para que los agentes usen CortextMCP sin cambiar ni una línea
+`engram_mem_save`). Para que los agentes usen Sechel sin cambiar ni una línea
 de código, reemplazá el servidor `engram` en la **configuración global**
 (`~/.config/opencode/opencode.json`):
 
@@ -128,19 +128,19 @@ de código, reemplazá el servidor `engram` en la **configuración global**
 ```
 
 Los agentes siguen llamando a `engram_mem_save`, `engram_mem_search`, etc. —
-CortextMCP responde en el mismo formato que Engram. No se necesita cambiar nada
+Sechel responde en el mismo formato que Engram. No se necesita cambiar nada
 en las instrucciones de los agentes ni en skills existentes.
 
-### Modo servidor separado (Cortext como MCP aparte)
+### Modo servidor separado (Sechel como MCP aparte)
 
-Si querés tener **Engram local** y **CortextMCP** como dos servidores distintos
+Si querés tener **Engram local** y **Sechel** como dos servidores distintos
 (por ejemplo durante una migración), agregalo con otro nombre en cualquier
 `opencode.json` (proyecto o global):
 
 ```json
 {
   "mcp": {
-    "cortext": {
+    "sechel": {
       "type": "remote",
       "url": "https://<tu-despliegue>.vercel.app/api/mcp",
       "headers": {
@@ -151,8 +151,8 @@ Si querés tener **Engram local** y **CortextMCP** como dos servidores distintos
 }
 ```
 
-En este modo los agentes ven las herramientas con prefijo `cortext_` en lugar de
-`engram_` (`cortext_mem_save`, `cortext_mem_search`, …). Necesitás indicarles
+En este modo los agentes ven las herramientas con prefijo `sechel_` en lugar de
+`engram_` (`sechel_mem_save`, `sechel_mem_search`, …). Necesitás indicarles
 explícitamente que usen ese nombre en lugar del original.
 
 ### Global vs. proyecto
@@ -165,7 +165,7 @@ explícitamente que usen ese nombre en lugar del original.
 OpenCode mergea ambas configuraciones: lo que pongas en la global aplica a todos
 los proyectos, y podés overridear por proyecto si es necesario.
 
-> **Migrar desde Engram local:** mantené Engram y CortextMCP como dos MCP
+> **Migrar desde Engram local:** mantené Engram y Sechel como dos MCP
 > separados en la misma sesión del agente, y pedile que copie las memorias que
 > quieras conservando el mismo `topic_key` y `type`. No hay import masivo: la
 > propia API `mem_*` es el camino de migración. Ver sección "Migración" en
@@ -203,13 +203,13 @@ docs/
 
 ## Atribución y licencia
 
-CortextMCP es un proyecto original con licencia **MIT**. No contiene código fuente
+Sechel es un proyecto original con licencia **MIT**. No contiene código fuente
 de Engram, pero la especificación de queries en
 [`docs/engram-query-reference.md`](docs/engram-query-reference.md) está derivada
 del store interno de Engram para mantener compatibilidad 100% de herramientas.
 
 - [Engram](https://github.com/Gentleman-Programming/engram) — © 2026 Alan Buscaglia (MIT)
-- [CortextMCP](LICENSE) — © 2026 samcasdev (MIT)
+- [Sechel](LICENSE) — © 2026 samcasdev (MIT)
 
 ### Referencia
 
