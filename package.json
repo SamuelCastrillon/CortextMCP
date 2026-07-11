@@ -24,6 +24,11 @@
     "clean:mcp-server": "pnpm -C packages/mcp-server clean",
     "build:pkgs": "pnpm -r --filter='./packages/*' run build",
     "test:pkgs": "pnpm -r --filter='./packages/*' run test",
+    "build:server": "pnpm -C apps/server build",
+    "dev:server": "pnpm -C apps/server dev",
+    "test:server": "pnpm -C apps/server test",
+    "typecheck:server": "pnpm -C apps/server typecheck",
+    "clean:server": "pnpm -C apps/server clean",
     "typecheck:pkgs": "pnpm -r --filter='./packages/*' run typecheck"
   },
   "dependencies": {
