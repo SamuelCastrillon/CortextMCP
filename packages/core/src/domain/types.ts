@@ -1,4 +1,4 @@
-import type { ObservationsTable } from '../types';
+import type { ObservationsTable } from '../types.js';
 
 // Column list used by SELECT in searchObservations.
 export const OBS_COLS = `o.id, o.tenant_id, o.sync_id, o.session_id, o.type, o.title,

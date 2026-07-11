@@ -1,9 +1,9 @@
 import type { AuthInfo } from '@modelcontextprotocol/sdk/server/auth/types.js';
 import type { Kysely } from 'kysely';
 import { sql } from 'kysely';
-import type { CortexDB } from './types';
-import { normalizeProject } from './domain/normalize';
-import { hashToken } from './tokens';
+import type { CortexDB } from './types.js';
+import { normalizeProject } from './domain/normalize.js';
+import { hashToken } from './tokens.js';
 
 export interface Actor {
   userId: number;

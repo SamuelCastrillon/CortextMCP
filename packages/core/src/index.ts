@@ -1,21 +1,21 @@
 // @sechel/core — Platform-agnostic core domain package
 // No server-only imports. No Next.js dependencies. Factory-based DB creation.
 
-export { createDb } from './db';
-export type { DbOptions } from './db';
+export { createDb } from './db.js';
+export type { DbOptions } from './db.js';
 
 export {
   verifyToken,
   authorize,
   assertAuthorized,
   actorFromAuthInfo,
-} from './auth';
-export type { Actor, RequiredLevel } from './auth';
+} from './auth.js';
+export type { Actor, RequiredLevel } from './auth.js';
 
-export { generateApiToken, hashToken } from './tokens';
-export { hashPassword, verifyPassword } from './password';
+export { generateApiToken, hashToken } from './tokens.js';
+export { hashPassword, verifyPassword } from './password.js';
 
-export * from './domain';
+export * from './domain/index.js';
 
 export type {
   CortexDB,
@@ -30,4 +30,4 @@ export type {
   UserProjectAccessTable,
   ObservationRow,
   UserRow,
-} from './types';
+} from './types.js';

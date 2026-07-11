@@ -1,10 +1,10 @@
 import { sql, type Kysely } from 'kysely';
-import type { CortexDB, ObservationsTable } from '../types';
-import { assertAuthorized, type Actor } from '../auth';
-import { normalizeProject } from './normalize';
-import { saveObservation } from './store';
-import { OBS_COLS, type DoctorResult, type CapturePassiveResult, type CapturedItem } from './types';
-import type { ReviewInput, DoctorInput, MergeProjectsInput, CapturePassiveInput } from './validation';
+import type { CortexDB, ObservationsTable } from '../types.js';
+import { assertAuthorized, type Actor } from '../auth.js';
+import { normalizeProject } from './normalize.js';
+import { saveObservation } from './store.js';
+import { OBS_COLS, type DoctorResult, type CapturePassiveResult, type CapturedItem } from './types.js';
+import type { ReviewInput, DoctorInput, MergeProjectsInput, CapturePassiveInput } from './validation.js';
 
 const OBS_COLS_REVIEW = `id, tenant_id, sync_id, session_id, type, title, content,
   tool_name, project, scope, topic_key, revision_count, duplicate_count,

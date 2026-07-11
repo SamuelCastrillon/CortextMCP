@@ -1,9 +1,9 @@
 import { sql, type Kysely } from 'kysely';
-import type { CortexDB } from '../types';
-import { assertAuthorized, type Actor } from '../auth';
-import { genSyncId, getObservationById } from './store-utils';
-import { normalizeProject } from './normalize';
-import type { JudgeInput, CompareInput } from './validation';
+import type { CortexDB } from '../types.js';
+import { assertAuthorized, type Actor } from '../auth.js';
+import { genSyncId, getObservationById } from './store-utils.js';
+import { normalizeProject } from './normalize.js';
+import type { JudgeInput, CompareInput } from './validation.js';
 
 export async function judgeRelation(
   db: Kysely<CortexDB>,

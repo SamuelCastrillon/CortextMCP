@@ -1,6 +1,6 @@
 import { sql, type Kysely } from 'kysely';
 import { createHash, randomBytes } from 'node:crypto';
-import type { CortexDB, ObservationsTable } from '../types';
+import type { CortexDB, ObservationsTable } from '../types.js';
 
 export function genSyncId(prefix: string): string {
   return `${prefix}-${randomBytes(8).toString('hex')}`;

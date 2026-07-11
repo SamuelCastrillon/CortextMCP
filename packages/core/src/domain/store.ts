@@ -1,11 +1,11 @@
 import { sql, type Kysely } from 'kysely';
 import { createHash, randomBytes } from 'node:crypto';
-import type { CortexDB, ObservationsTable, ObservationRow } from '../types';
-import type { Actor } from '../auth';
-import { assertAuthorized } from '../auth';
-import { normalizeProject, stripPrivateTags } from './normalize';
-import { OBS_COLS, type Candidate, type SaveResult, type SearchResultRow } from './types';
-import { sanitizeFTS, sanitizeFTSCandidates } from './fts';
+import type { CortexDB, ObservationsTable, ObservationRow } from '../types.js';
+import type { Actor } from '../auth.js';
+import { assertAuthorized } from '../auth.js';
+import { normalizeProject, stripPrivateTags } from './normalize.js';
+import { OBS_COLS, type Candidate, type SaveResult, type SearchResultRow } from './types.js';
+import { sanitizeFTS, sanitizeFTSCandidates } from './fts.js';
 import {
   saveSchema,
   searchSchema,
@@ -27,7 +27,7 @@ import {
   type SavePromptInput,
   type UpdateInput,
   type DeleteInput,
-} from './validation';
+} from './validation.js';
 import {
   type StatsResult,
   type CurrentProjectResult,
@@ -35,8 +35,8 @@ import {
   type SavePromptResult,
   type UpdateResult,
   type DeleteResult,
-} from './types';
-import { ensureSession } from './store-session';
+} from './types.js';
+import { ensureSession } from './store-session.js';
 
 // ---------------------------------------------------------------------------
 // Helpers

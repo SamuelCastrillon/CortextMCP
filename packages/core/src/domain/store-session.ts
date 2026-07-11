@@ -1,8 +1,8 @@
 import { sql, type Kysely } from 'kysely';
 import { randomBytes } from 'node:crypto';
-import type { CortexDB, ObservationRow } from '../types';
-import { assertAuthorized, type Actor } from '../auth';
-import { normalizeProject } from './normalize';
+import type { CortexDB, ObservationRow } from '../types.js';
+import { assertAuthorized, type Actor } from '../auth.js';
+import { normalizeProject } from './normalize.js';
 import {
   sessionStartSchema,
   sessionEndSchema,
@@ -12,7 +12,7 @@ import {
   type SessionEndInput,
   type TimelineInput,
   type ContextInput,
-} from './validation';
+} from './validation.js';
 import type {
   SessionStartResult,
   SessionEndResult,
@@ -20,7 +20,7 @@ import type {
   ContextResult,
   PromptRow,
   SessionRow,
-} from './types';
+} from './types.js';
 
 function genSyncId(prefix: string): string {
   return `${prefix}-${randomBytes(8).toString('hex')}`;
