@@ -5,6 +5,10 @@
       "maxDuration": 30
     }
   },
+  "rewrites": [
+    { "source": "/(.*)", "destination": "/api/mcp" }
+  ],
   "installCommand": "pnpm install",
-  "buildCommand": "pnpm --filter @sechel/server build"
+  "buildCommand": "pnpm --filter @sechel/server build",
+  "outputDirectory": "."
 }

@@ -1,4 +1,6 @@
 // apps/server/api/mcp.ts
+// Vercel serverless entry point.
+// Rewrites in vercel.json route all requests here.
 import { createApp } from '../src/index.js';
 
 const app = createApp();
