@@ -1,7 +1,7 @@
 import { Hono } from 'hono';
 import { serve } from '@hono/node-server';
 import { WebStandardStreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js';
-import { createSechelServer } from '@sechel/mcp-server';
+import { createSechelServer } from '@sechel-mcp/mcp-server';
 import { createDb } from '@sechel-mcp/core';
 import { registerAdminRoutes } from './admin.js';
 
