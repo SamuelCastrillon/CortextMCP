@@ -10,7 +10,9 @@
     "clean": "rm -rf dist",
     "test": "vitest run",
     "test:watch": "vitest",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "deploy:cf": "wrangler deploy",
+    "deploy:vercel": "vercel deploy --prod"
   },
   "dependencies": {
     "@hono/node-server": "^1.13.0",

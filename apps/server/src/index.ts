@@ -13,6 +13,7 @@ export type Env = {
   DATABASE_AUTH_TOKEN?: string;
   TENANT_ID?: string;
   PORT?: string;
+  SECHEL_ADMIN_TOKEN?: string;
 };
 
 // ---------------------------------------------------------------------------
@@ -23,6 +24,18 @@ export function createApp(): Hono<{ Bindings: Env }> {
 
   // ---- Admin routes -------------------------------------------------------
   registerAdminRoutes(app);
+
+  // ---- Admin token middleware (applies to /mcp/* only) ----------------------
+  app.use('/mcp/*', async (c, next) => {
+    const adminToken = c.env?.SECHEL_ADMIN_TOKEN ?? process.env.SECHEL_ADMIN_TOKEN;
+    if (adminToken) {
+      const auth = c.req.header('Authorization');
+      if (!auth?.startsWith('Bearer ') || auth.slice(7) !== adminToken) {
+        return c.json({ error: 'Unauthorized' }, 401);
+      }
+    }
+    await next();
+  });
 
   // ---- MCP StreamableHTTP endpoint ----------------------------------------
   // Creates a fresh transport + server per request (stateless mode).
