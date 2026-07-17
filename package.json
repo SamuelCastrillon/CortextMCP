@@ -34,7 +34,8 @@
     "test:server": "pnpm -C apps/server test",
     "typecheck:server": "pnpm -C apps/server typecheck",
     "clean:server": "pnpm -C apps/server clean",
-    "typecheck:pkgs": "pnpm -r --filter='./packages/*' run typecheck"
+    "typecheck:pkgs": "pnpm -r --filter='./packages/*' run typecheck",
+    "publish:all": "pnpm -r --filter='./packages/*' --filter='./apps/cli' publish"
   },
   "dependencies": {
     "@libsql/client": "^0.15.0",
