@@ -45,9 +45,12 @@ export async function createDb(options: DbOptions): Promise<Kysely<CortexDB>> {
     throw new Error('createDb: url is required');
   }
 
-  const { createClient } = options.url.startsWith('file:') || options.url.startsWith(':memory:')
-    ? await import('@libsql/client')
-    : await import('@libsql/client/web');
+  const useWeb = options.runtime === 'edge'
+    || (options.runtime !== 'node' && !options.url.startsWith('file:') && !options.url.startsWith(':memory:'));
+
+  const { createClient } = useWeb
+    ? await import('@libsql/client/web')
+    : await import('@libsql/client');
 
   const client: Client = createClient({
     url: options.url,

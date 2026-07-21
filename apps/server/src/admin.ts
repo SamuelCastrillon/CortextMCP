@@ -7,21 +7,28 @@ import { createSessionToken, verifyPassword } from './admin/auth.js';
  * Bootstrap the admin user from ADMIN_USERNAME / ADMIN_PASSWORD env vars.
  * Idempotent — safe to call on every cold start.
  */
+function dbUrl(): string {
+  return process.env.DATABASE_URL ?? process.env.TURSO_DATABASE_URL ?? '';
+}
+function dbAuthToken(): string | undefined {
+  return process.env.DATABASE_AUTH_TOKEN ?? process.env.TURSO_AUTH_TOKEN;
+}
+
 export async function bootstrapAdmin(): Promise<void> {
-  const dbUrl = process.env.DATABASE_URL;
-  const dbAuthToken = process.env.DATABASE_AUTH_TOKEN;
+  const url = dbUrl();
+  const authToken = dbAuthToken();
   const tenantId = process.env.TENANT_ID ?? 'default';
   const adminUsername = process.env.ADMIN_USERNAME;
   const adminPassword = process.env.ADMIN_PASSWORD;
 
-  if (!dbUrl) return;
+  if (!url) return;
 
   if (adminUsername && adminPassword) {
-    const { createClient } = dbUrl.startsWith('file:') || dbUrl.startsWith(':memory:')
-      ? await import('@libsql/client')
-      : await import('@libsql/client/web');
+    const { createClient } = process.env.VERCEL === '1'
+      ? await import('@libsql/client/web')
+      : await import('@libsql/client');
 
-    const client = createClient({ url: dbUrl, authToken: dbAuthToken });
+    const client = createClient({ url, authToken });
     try {
       await seedAdmin(client, tenantId, { username: adminUsername, password: adminPassword });
     } finally {
@@ -68,15 +75,15 @@ export function registerAdminRoutes(app: Hono<{ Bindings: Env }>): void {
 
       const env = c.env;
       const tenantId = env?.TENANT_ID ?? process.env.TENANT_ID ?? 'default';
-      const dbUrl = env?.DATABASE_URL ?? process.env.DATABASE_URL ?? '';
-      const dbAuthToken = env?.DATABASE_AUTH_TOKEN ?? process.env.DATABASE_AUTH_TOKEN;
+      const dbUrl = env?.DATABASE_URL ?? env?.TURSO_DATABASE_URL ?? process.env.DATABASE_URL ?? process.env.TURSO_DATABASE_URL ?? '';
+      const dbAuthToken = env?.DATABASE_AUTH_TOKEN ?? env?.TURSO_AUTH_TOKEN ?? process.env.DATABASE_AUTH_TOKEN ?? process.env.TURSO_AUTH_TOKEN;
 
       if (!dbUrl) {
         return c.json({ error: 'DATABASE_URL not configured' }, 500);
       }
 
       const { createDb } = await import('@sechel-mcp/core');
-      const db = await createDb({ url: dbUrl, authToken: dbAuthToken });
+      const db = await createDb({ url: dbUrl, authToken: dbAuthToken, runtime: process.env.VERCEL === '1' ? 'edge' : 'node' });
 
       const { sql } = await import('kysely');
       const user = await sql<{

@@ -9,12 +9,27 @@ import { registerAdminRoutes, bootstrapAdmin } from './admin.js';
 // Env — typed bindings for both CF Workers and Node.js
 // ---------------------------------------------------------------------------
 export type Env = {
-  DATABASE_URL: string;
+  DATABASE_URL?: string;
   DATABASE_AUTH_TOKEN?: string;
+  TURSO_DATABASE_URL?: string;
+  TURSO_AUTH_TOKEN?: string;
   TENANT_ID?: string;
   PORT?: string;
   SECHEL_DEV_TOKEN?: string;
 };
+
+function isVercel(): boolean {
+  return process.env.VERCEL === '1';
+}
+function dbUrl(env: Partial<Env>): string {
+  return env?.DATABASE_URL ?? env?.TURSO_DATABASE_URL ?? process.env.DATABASE_URL ?? process.env.TURSO_DATABASE_URL ?? '';
+}
+function dbAuthToken(env: Partial<Env>): string | undefined {
+  return env?.DATABASE_AUTH_TOKEN ?? env?.TURSO_AUTH_TOKEN ?? process.env.DATABASE_AUTH_TOKEN ?? process.env.TURSO_AUTH_TOKEN;
+}
+function dbRuntime(env: Partial<Env>): 'edge' | 'node' {
+  return (env?.VERCEL ?? isVercel()) ? 'edge' : 'node';
+}
 
 // ---------------------------------------------------------------------------
 // App factory — exported so tests and consumers can create isolated instances
@@ -41,8 +56,9 @@ export function createApp(): Hono<{ Bindings: Env }> {
     const bearerToken = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : undefined;
 
     const db = await createDb({
-      url: env?.DATABASE_URL ?? process.env.DATABASE_URL ?? '',
-      authToken: env?.DATABASE_AUTH_TOKEN ?? process.env.DATABASE_AUTH_TOKEN,
+      url: dbUrl(env),
+      authToken: dbAuthToken(env),
+      runtime: dbRuntime(env),
     });
 
     const authInfo = await verifyToken(
@@ -85,7 +101,9 @@ const isDirectRun =
 if (isDirectRun) {
   // Seed admin on startup for long-running Node.js deployments (Docker/VPS).
   // In serverless (Vercel/CF Workers), seeding happens lazily via login.
-  bootstrapAdmin();
+  bootstrapAdmin().catch((err) =>
+    console.error('bootstrapAdmin failed:', err instanceof Error ? err.message : err)
+  );
 
   const port = parseInt(process.env.PORT || '3001', 10);
   console.log(`Sechel server starting on http://localhost:${port}`);
