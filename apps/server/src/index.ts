@@ -69,12 +69,6 @@ export function createApp(): Hono<{ Bindings: Env }> {
 }
 
 // ---------------------------------------------------------------------------
-// Bootstrap admin user from env (ADMIN_USERNAME / ADMIN_PASSWORD)
-// Runs once at module init. Idempotent — safe for cold starts.
-// ---------------------------------------------------------------------------
-bootstrapAdmin();
-
-// ---------------------------------------------------------------------------
 // Global app instance — reused by serve() and CF Workers export
 // ---------------------------------------------------------------------------
 const app = createApp();
@@ -89,6 +83,10 @@ const isDirectRun =
     import.meta.url.endsWith(`/${process.argv[1]}`));
 
 if (isDirectRun) {
+  // Seed admin on startup for long-running Node.js deployments (Docker/VPS).
+  // In serverless (Vercel/CF Workers), seeding happens lazily via login.
+  bootstrapAdmin();
+
   const port = parseInt(process.env.PORT || '3001', 10);
   console.log(`Sechel server starting on http://localhost:${port}`);
   console.log(`  MCP endpoint: POST /mcp`);

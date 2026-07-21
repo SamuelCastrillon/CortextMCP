@@ -31,6 +31,13 @@ export async function bootstrapAdmin(): Promise<void> {
   }
 }
 
+let seeded = false;
+async function ensureSeeded(): Promise<void> {
+  if (seeded) return;
+  seeded = true;
+  await bootstrapAdmin();
+}
+
 /**
  * Register admin REST API routes on the Hono app.
  *
@@ -39,11 +46,13 @@ export async function bootstrapAdmin(): Promise<void> {
  * - POST /admin/auth/login   — authenticate with username + password, returns JWT
  */
 export function registerAdminRoutes(app: Hono<{ Bindings: Env }>): void {
-  app.get('/admin/health', (c) => {
+  app.get('/admin/health', async (c) => {
+    await ensureSeeded();
     return c.json({ status: 'ok' });
   });
 
   app.post('/admin/auth/login', async (c) => {
+    await ensureSeeded();
     try {
       let username: string | undefined;
       let password: string | undefined;
