@@ -17,10 +17,9 @@ export async function bootstrapAdmin(): Promise<void> {
   if (!dbUrl) return;
 
   if (adminUsername && adminPassword) {
-    const isEdge = typeof (globalThis as any).EdgeRuntime !== 'undefined';
-    const { createClient } = isEdge
-      ? await import('@libsql/client/web')
-      : await import('@libsql/client');
+    const { createClient } = dbUrl.startsWith('file:') || dbUrl.startsWith(':memory:')
+      ? await import('@libsql/client')
+      : await import('@libsql/client/web');
 
     const client = createClient({ url: dbUrl, authToken: dbAuthToken });
     try {

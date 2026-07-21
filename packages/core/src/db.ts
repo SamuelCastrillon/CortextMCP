@@ -10,28 +10,15 @@ export interface DbOptions {
   /** Auth token for Turso remote databases */
   authToken?: string;
   /**
-   * Runtime detection mode.
-   * - 'auto' (default): detect Node.js vs edge automatically
+   * Driver selection mode.
+   * - 'auto' (default): `file:` / `:memory:` → @libsql/client (native),
+   *   `libsql://` / `https://` → @libsql/client/web (HTTP, serverless-safe)
    * - 'node': force @libsql/client Node.js driver
-   * - 'edge': force @libsql/client/web (WASM-based edge/worker driver)
+   * - 'edge': force @libsql/client/web (WASM-based HTTP driver)
    */
   runtime?: 'node' | 'edge' | 'auto';
   /** Tenant ID override. Replaces TENANT_ID() reading process.env */
   tenantId?: string;
-}
-
-/**
- * Detect if running in an edge runtime (Cloudflare Workers, etc.).
- */
-function isEdgeRuntime(): boolean {
-  return typeof (globalThis as any).EdgeRuntime !== 'undefined';
-}
-
-/**
- * Detect if running in Node.js.
- */
-function isNodeRuntime(): boolean {
-  return typeof process?.versions?.node !== 'undefined';
 }
 
 /**
@@ -58,10 +45,9 @@ export async function createDb(options: DbOptions): Promise<Kysely<CortexDB>> {
     throw new Error('createDb: url is required');
   }
 
-  const runtime = resolveRuntime(options);
-  const { createClient } = runtime === 'edge'
-    ? await import('@libsql/client/web')
-    : await import('@libsql/client');
+  const { createClient } = options.url.startsWith('file:') || options.url.startsWith(':memory:')
+    ? await import('@libsql/client')
+    : await import('@libsql/client/web');
 
   const client: Client = createClient({
     url: options.url,
@@ -77,11 +63,4 @@ export async function createDb(options: DbOptions): Promise<Kysely<CortexDB>> {
   });
 }
 
-function resolveRuntime(options: DbOptions): 'node' | 'edge' {
-  if (options.runtime && options.runtime !== 'auto') return options.runtime;
-  if (isEdgeRuntime()) return 'edge';
-  if (isNodeRuntime()) return 'node';
-  return 'node';
-}
 
-export { isEdgeRuntime, isNodeRuntime };
