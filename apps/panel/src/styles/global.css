@@ -1,0 +1,38 @@
+@import "tailwindcss";
+@config "../../tailwind.config.ts";
+
+@layer base {
+  :root {
+    /* Sechel Design System — Dark, Terminal-Inspired Cyber-Brutalist */
+    --background: 0 0% 5%;            /* #0c0c0c */
+    --foreground: 275 24% 90%;       /* #e7e0ec */
+    --card: 263 18% 9%;              /* #15121a */
+    --card-foreground: 275 24% 90%;  /* #e7e0ec */
+    --popover: 263 18% 9%;           /* #15121a */
+    --popover-foreground: 275 24% 90%; /* #e7e0ec */
+    --primary: 261 100% 87%;         /* #d3bbff — links, highlights */
+    --primary-foreground: 0 0% 100%; /* #ffffff — text on primary fill */
+    --secondary: 30 4% 78%;          /* #ccc5c1 — warm gray */
+    --secondary-foreground: 0 0% 5%; /* #0c0c0c */
+    --muted: 0 0% 10%;               /* #1a1a1a */
+    --muted-foreground: 0 0% 67%;    /* #acabaa */
+    --accent: 263 69% 42%;           /* #5b21b6 — deep purple fills */
+    --accent-foreground: 261 100% 87%; /* #d3bbff */
+    --destructive: 349 90% 71%;      /* #f97386 */
+    --destructive-foreground: 0 0% 5%; /* #0c0c0c */
+    --border: 0 0% 28%;              /* #484848 */
+    --input: 0 0% 28%;               /* #484848 */
+    --ring: 263 69% 42%;             /* #5b21b6 */
+    --radius: 0rem;
+  }
+}
+
+@layer base {
+  * {
+    border-color: hsl(var(--border));
+  }
+  body {
+    background-color: hsl(var(--background));
+    color: hsl(var(--foreground));
+  }
+}
