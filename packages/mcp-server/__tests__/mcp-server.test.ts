@@ -129,6 +129,39 @@ describe('createSechelServer — P-1.6 GREEN', () => {
     await server.close();
   });
 
+  it('calls tool without auth when auth is not required (stdio mode)', async () => {
+    const [serverTransport, clientTransport] = InMemoryTransport.createLinkedPair();
+    const mockDb = {} as unknown as Kysely<CortexDB>;
+
+    const server = await createSechelServer({
+      transport: serverTransport,
+      db: mockDb,
+      tenantId: 'test',
+      auth: { required: false },
+    });
+
+    const client = new Client(
+      { name: 'test-client', version: '1.0.0' },
+      { capabilities: {} },
+    );
+
+    await client.connect(clientTransport);
+
+    // Call mem_stats without authInfo — should NOT return unauthorized.
+    // It will fail because mockDb is empty, but the failure must NOT be auth-related.
+    const result = await client.callTool({
+      name: 'mem_stats',
+      arguments: {},
+    });
+
+    // Should NOT be an unauthorized error
+    const text = (result.content[0] as { text: string }).text;
+    expect(text).not.toMatch(/unauthorized/i);
+
+    await client.close();
+    await server.close();
+  });
+
   it('ping tool works without auth even when auth is required', async () => {
     const [serverTransport, clientTransport] = InMemoryTransport.createLinkedPair();
     const mockDb = {} as unknown as Kysely<CortexDB>;

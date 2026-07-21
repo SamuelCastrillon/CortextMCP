@@ -51,7 +51,7 @@ export async function createSechelServer(config: SechelServerConfig): Promise<Mc
     },
   );
 
-  const ctx: ToolContext = { db, tenantId };
+  const ctx: ToolContext = { db, tenantId, authRequired: config.auth?.required ?? false };
 
   registerAllTools(server, ctx);
 

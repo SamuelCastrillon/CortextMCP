@@ -2,11 +2,11 @@ import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import {
   compareSchema,
   compareMemories,
-  actorFromAuthInfo,
   type CompareInput,
 } from '@sechel-mcp/core';
 import type { ToolContext } from './index.js';
 import { ok, error } from './utils.js';
+import { resolveActor } from './auth-wrapper.js';
 
 export function registerMemCompare(server: McpServer, ctx: ToolContext): void {
   server.registerTool('mem_compare', {
@@ -15,8 +15,7 @@ export function registerMemCompare(server: McpServer, ctx: ToolContext): void {
     inputSchema: compareSchema.shape,
   }, async (args, extra) => {
     try {
-      const actor = actorFromAuthInfo(extra.authInfo);
-      if (!actor) return error('Unauthorized: missing or invalid token');
+      const actor = resolveActor(extra, ctx);
       const parsed = compareSchema.parse(args) as CompareInput;
       const result = await compareMemories(ctx.db, ctx.tenantId, actor, parsed);
       return ok(result);

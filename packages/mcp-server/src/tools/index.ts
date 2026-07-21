@@ -29,6 +29,7 @@ import { registerMemCapturePassive } from './mem_capture_passive.js';
 export interface ToolContext {
   db: Kysely<CortexDB>;
   tenantId: string;
+  authRequired: boolean;
 }
 
 /**
