@@ -2,11 +2,11 @@ import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import {
   endSession,
   sessionEndSchema,
-  actorFromAuthInfo,
   type SessionEndInput,
 } from '@sechel-mcp/core';
 import type { ToolContext } from './index.js';
 import { ok, error } from './utils.js';
+import { resolveActor } from './auth-wrapper.js';
 
 export function registerMemSessionSummary(server: McpServer, ctx: ToolContext): void {
   server.registerTool(
@@ -18,8 +18,7 @@ export function registerMemSessionSummary(server: McpServer, ctx: ToolContext): 
     },
     async (args, extra) => {
       try {
-        const actor = actorFromAuthInfo(extra.authInfo);
-        if (!actor) return error('Unauthorized: missing or invalid token');
+        const actor = resolveActor(extra, ctx);
         const parsed = sessionEndSchema.parse(args) as SessionEndInput;
         const result = await endSession(ctx.db, ctx.tenantId, actor, parsed);
         return ok(result);
