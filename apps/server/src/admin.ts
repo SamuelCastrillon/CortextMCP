@@ -47,8 +47,7 @@ async function ensureSeeded(): Promise<void> {
  */
 export function registerAdminRoutes(app: Hono<{ Bindings: Env }>): void {
   app.get('/admin/health', async (c) => {
-    await ensureSeeded();
-    return c.json({ status: 'ok' });
+    return c.json({ status: 'ok', time: Date.now() });
   });
 
   app.post('/admin/auth/login', async (c) => {
