@@ -23,7 +23,7 @@ let testEnv: Env;
 let createApp: () => Hono<{ Bindings: Env }>;
 
 beforeAll(async () => {
-  process.env.SESSION_SECRET = TEST_SESSION_SECRET;
+  process.env.JWT_SECRET = TEST_SESSION_SECRET;
 
   // Seed the temp DB with an admin user and a token
   const { createClient } = await import('@libsql/client');

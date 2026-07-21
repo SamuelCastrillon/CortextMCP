@@ -12,7 +12,6 @@ compatibility_flags = ["nodejs_compat"]
 [vars]
 DATABASE_URL = ""
 TENANT_ID = "default"
-SECHEL_ADMIN_TOKEN = ""
 
 # Workers + Assets for panel static files (future)
 # [assets]

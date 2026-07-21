@@ -38,8 +38,8 @@ export async function verifyPassword(password: string, hash: string): Promise<bo
 // ---------------------------------------------------------------------------
 
 function getSecret(): Uint8Array {
-  const raw = process.env.SESSION_SECRET;
-  if (!raw) throw new Error('SESSION_SECRET environment variable is required');
+  const raw = process.env.JWT_SECRET;
+  if (!raw) throw new Error('JWT_SECRET environment variable is required');
   return new TextEncoder().encode(raw);
 }
 

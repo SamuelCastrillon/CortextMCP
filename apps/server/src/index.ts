@@ -14,7 +14,6 @@ export type Env = {
   TENANT_ID?: string;
   PORT?: string;
   SECHEL_DEV_TOKEN?: string;
-  SECHEL_ADMIN_TOKEN?: string;
 };
 
 // ---------------------------------------------------------------------------
