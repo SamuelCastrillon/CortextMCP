@@ -25,7 +25,7 @@ RUN pnpm install --frozen-lockfile
 # Build workspace dependency chain: core → mcp-server → server → panel
 RUN pnpm -r --filter='./packages/*' run build
 RUN pnpm -C apps/server run build
-RUN pnpm -C apps/panel run build
+RUN pnpm -C apps/panel run build:docker
 
 # ---------------------------------------------------------------------------
 # Runtime stage — only what is needed to serve the Astro SSR app
